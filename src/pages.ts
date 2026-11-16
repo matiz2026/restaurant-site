@@ -1,5 +1,4 @@
 import type { HourFields, SiteContent } from "./db.ts";
-import { isUploadPath } from "./validate.ts";
 
 export function renderPublic(content: SiteContent): string {
   const { restaurant, hours, menu } = content;
@@ -246,11 +245,9 @@ function itemHtml(item: SiteContent["menu"][number]["items"][number]): string {
   const price = item.price
     ? `<span class="dots" aria-hidden="true"></span><span class="price">${escapeHtml(item.price)}</span>`
     : "";
-  const photo = image(item.photoUrl, item.name, "item-photo");
   return `<li>
     <div class="item-line"><span class="item-name">${escapeHtml(item.name)}</span>${price}</div>
     ${item.description ? `<p class="desc">${escapeHtml(item.description)}</p>` : ""}
-    ${photo}
   </li>`;
 }
 
@@ -279,7 +276,6 @@ function image(url: string, alt: string, className: string): string {
 
 function displayUrl(value: string): string {
   if (!value) return "";
-  if (isUploadPath(value)) return value;
   try {
     const url = new URL(value);
     if (url.protocol !== "http:" && url.protocol !== "https:") return "";

@@ -1,7 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { hashPassword, verifyPassword, HASH_ITERATIONS } from "../src/auth.ts";
@@ -143,9 +141,9 @@ describe("restaurant site", () => {
           {
             name: "Sweets",
             note: "After dinner",
-            items: [{ name: "Rice pudding", description: "Cold", price: "$7", photoUrl: "" }],
+            items: [{ name: "Rice pudding", description: "Cold", price: "$7", photoUrl: "https://example.com/pudding.jpg" }],
           },
-          { name: "First", note: "", items: [{ name: "Soup", description: "", price: "$6", photoUrl: "" }] },
+          { name: "First", note: "", items: [{ name: "Soup", description: "", price: "$6" }] },
         ],
       },
       cookie,
@@ -153,6 +151,8 @@ describe("restaurant site", () => {
     assert.equal(menu.status, 200);
     const menuPage = await (await handleRequest(new Request(`${origin}/`), ctx)).text();
     assert.match(menuPage, /Rice pudding/);
+    assert.doesNotMatch(menuPage, /pudding\.jpg/);
+    assert.doesNotMatch(menuPage, /item-photo/);
     assert.ok(menuPage.indexOf("Sweets") < menuPage.indexOf("First") || menuPage.indexOf("Sweets") > 0);
     const sweets = menuPage.indexOf("Sweets");
     const first = menuPage.indexOf(">First<");
@@ -163,7 +163,7 @@ describe("restaurant site", () => {
       "/api/admin/menu",
       {
         sections: [
-          { name: "First", note: "", items: [{ name: "Soup", description: "", price: "$6", photoUrl: "" }] },
+          { name: "First", note: "", items: [{ name: "Soup", description: "", price: "$6" }] },
           { name: "Sweets", note: "", items: [] },
         ],
       },
@@ -200,91 +200,20 @@ describe("restaurant site", () => {
     const css = await handleRequest(new Request(`${origin}/site.css`), ctx);
     assert.equal(css.status, 200);
     assert.match(await css.text(), /color:red/);
-  });
 
-  it("stores an uploaded dish photo as a public file and shows it", async () => {
-    const uploadsDir = mkdtempSync(join(tmpdir(), "matiz-uploads-"));
-    try {
-      const { ctx, password } = await context(uploadsDir);
-      const loggedIn = await post(ctx, "/api/login", { username: "matiz", password });
-      const cookie = cookiePair(loggedIn);
-      const png = Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
-        "base64",
-      );
-      const anonymous = await handleRequest(
-        new Request(`${origin}/api/admin/photos`, {
-          method: "POST",
-          headers: { origin, "content-type": "image/png" },
-          body: png,
-        }),
-        ctx,
-      );
-      assert.equal(anonymous.status, 401);
-
-      const rejected = await handleRequest(
-        new Request(`${origin}/api/admin/photos`, {
-          method: "POST",
-          headers: { origin, "content-type": "text/plain", cookie },
-          body: "not-a-photo",
-        }),
-        ctx,
-      );
-      assert.equal(rejected.status, 400);
-
-      const uploaded = await handleRequest(
-        new Request(`${origin}/api/admin/photos`, {
-          method: "POST",
-          headers: { origin, "content-type": "image/png", cookie },
-          body: png,
-        }),
-        ctx,
-      );
-      assert.equal(uploaded.status, 200);
-      const payload = await uploaded.json();
-      assert.match(payload.url, /^\/uploads\/photo-[a-z0-9]+\.png$/);
-      const stored = readFileSync(join(uploadsDir, payload.url.slice("/uploads/".length)));
-      assert.equal(stored.length, png.length);
-
-      const image = await handleRequest(new Request(`${origin}${payload.url}`), ctx);
-      assert.equal(image.status, 200);
-      assert.equal(image.headers.get("content-type"), "image/png");
-      assert.equal((await image.arrayBuffer()).byteLength, png.length);
-      const escaped = await handleRequest(new Request(`${origin}/uploads/../package.json`), ctx);
-      assert.equal(escaped.status, 404);
-
-      const menu = await put(
-        ctx,
-        "/api/admin/menu",
-        {
-          sections: [
-            { name: "Plates", note: "", items: [{ name: "Rice", description: "Warm", price: "$7", photoUrl: payload.url }] },
-          ],
-        },
-        cookie,
-      );
-      assert.equal(menu.status, 200);
-      const page = await (await handleRequest(new Request(`${origin}/`), ctx)).text();
-      assert.match(page, new RegExp(`src="${payload.url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
-
-      const badPath = await put(
-        ctx,
-        "/api/admin/menu",
-        {
-          sections: [
-            { name: "Plates", note: "", items: [{ name: "Rice", description: "", price: "", photoUrl: "/etc/passwd" }] },
-          ],
-        },
-        cookie,
-      );
-      assert.equal(badPath.status, 400);
-    } finally {
-      rmSync(uploadsDir, { recursive: true, force: true });
-    }
+    const photos = await handleRequest(
+      new Request(`${origin}/api/admin/photos`, {
+        method: "POST",
+        headers: { origin, "content-type": "image/png", cookie },
+        body: "not-used",
+      }),
+      ctx,
+    );
+    assert.equal(photos.status, 404);
   });
 });
 
-async function context(uploadsDir) {
+async function context() {
   const db = openDatabase(":memory:");
   applyMigrations(db, `${root}/migrations`);
   const password = "test-password-9";
@@ -297,7 +226,6 @@ async function context(uploadsDir) {
     ctx: {
       db,
       sessionSecret: "test-session-secret-should-be-long-enough-0123456789",
-      uploadsDir,
       assets: {
         async fetch() {
           return new Response("body{color:red}", { headers: { "content-type": "text/css" } });

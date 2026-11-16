@@ -30,4 +30,4 @@ npm run typecheck
 
 ## Deploy
 
-The Worker and database already exist on the Cloudflare account. `npx wrangler deploy` publishes this project to https://matizpr.com. D1 commands that should affect the live database need `--remote`. Commands with `--local` stay on this machine.
+The Worker and database already exist on the Cloudflare account. `npx wrangler deploy` publishes this project to https://matizpr.com. A push or merge to `main` does not publish the site. D1 commands that should affect the live database need `--remote`. Commands with `--local` stay on this machine.

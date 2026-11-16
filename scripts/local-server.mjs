@@ -23,7 +23,6 @@ export async function startFallbackServer({ port }) {
         db: database,
         sessionSecret,
         assets,
-        uploadsDir: join(root, "public", "uploads"),
       });
       await writeNodeResponse(outgoing, response);
     } catch (error) {

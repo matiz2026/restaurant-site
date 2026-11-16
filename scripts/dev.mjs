@@ -4,14 +4,12 @@ import { randomBytes } from "node:crypto";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { startFallbackServer } from "./local-server.mjs";
-import { startUploadWriter } from "./upload-writer.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const port = 4327;
 const mode = process.argv.includes("--fallback") ? "fallback" : process.argv.includes("--worker") ? "worker" : "auto";
 
 ensureSecret();
-await startUploadWriter({ root });
 
 if (mode === "fallback") {
   await startFallbackServer({ port });

@@ -1,6 +1,5 @@
 import { handleRequest } from "./app.ts";
 import { fromD1 } from "./db.ts";
-import { defaultUploadsDir } from "./uploads.ts";
 
 export default {
   async fetch(request, env): Promise<Response> {
@@ -9,7 +8,6 @@ export default {
         db: fromD1(env.DB),
         sessionSecret: env.SESSION_SECRET,
         assets: env.ASSETS,
-        uploadsDir: defaultUploadsDir(),
       });
     } catch (error) {
       console.error(

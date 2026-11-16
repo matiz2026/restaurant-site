@@ -79,7 +79,7 @@ INSERT INTO menu_sections (id, name, note, sort_order) VALUES
   (2, 'Drinks', 'Sample section for drinks.', 1);
 
 INSERT INTO menu_items (section_id, name, description, price, photo_url, sort_order) VALUES
-  (1, 'Placeholder plate', 'Replace this dish with something you actually serve. The description, price, and photo are samples.', '$18', '', 0),
+  (1, 'Placeholder plate', 'Replace this dish with something you actually serve. The description and price are samples.', '$18', '', 0),
   (1, 'Placeholder second plate', 'A second sample so the menu has more than one line before you add real dishes.', '$14', '', 1),
   (2, 'Placeholder drink', 'Replace this with a real drink.', '$8', '', 0);
 

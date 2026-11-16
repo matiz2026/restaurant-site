@@ -86,7 +86,6 @@ export function parseMenu(value: unknown): MenuSectionFields[] {
         name: line(item.name, "Dish name", 80, true),
         description: block(item.description, "Dish description", 400),
         price: line(item.price, "Price", 16, false),
-        photoUrl: imageUrl(item.photoUrl),
       };
     });
     return {
@@ -127,14 +126,9 @@ function clean(value: unknown, label: string, max: number, required: boolean, al
   return text;
 }
 
-export function isUploadPath(value: string): boolean {
-  return /^\/uploads\/[a-z0-9][a-z0-9.-]*\.(?:jpe?g|png|gif|webp)$/.test(value);
-}
-
 function imageUrl(value: unknown): string {
   const text = line(value, "Photo URL", 500, false);
   if (!text) return "";
-  if (isUploadPath(text)) return text;
   let url: URL;
   try {
     url = new URL(text);

@@ -41,7 +41,6 @@ export interface MenuItemFields {
   name: string;
   description: string;
   price: string;
-  photoUrl: string;
 }
 
 export interface MenuSectionFields {
@@ -85,7 +84,6 @@ interface ItemRow extends Record<string, unknown> {
   name: string;
   description: string;
   price: string;
-  photo_url: string;
 }
 
 interface AdminRow extends Record<string, unknown> {
@@ -162,7 +160,7 @@ export async function loadContent(db: AppDatabase): Promise<SiteContent> {
     .all<SectionRow>();
   const items = await db
     .prepare(
-      "SELECT section_id, name, description, price, photo_url FROM menu_items ORDER BY sort_order, id",
+      "SELECT section_id, name, description, price FROM menu_items ORDER BY sort_order, id",
     )
     .all<ItemRow>();
 
@@ -173,7 +171,6 @@ export async function loadContent(db: AppDatabase): Promise<SiteContent> {
       name: item.name,
       description: item.description,
       price: item.price,
-      photoUrl: item.photo_url,
     });
     itemsBySection.set(item.section_id, list);
   }
@@ -257,7 +254,7 @@ export async function saveMenu(db: AppDatabase, sections: MenuSectionFields[]): 
             `INSERT INTO menu_items (section_id, name, description, price, photo_url, sort_order)
              VALUES ((SELECT id FROM menu_sections WHERE sort_order = ?), ?, ?, ?, ?, ?)`,
           )
-          .bind(sectionIndex, item.name, item.description, item.price, item.photoUrl, itemIndex),
+          .bind(sectionIndex, item.name, item.description, item.price, "", itemIndex),
       );
     });
   });

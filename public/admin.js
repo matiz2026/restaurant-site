@@ -140,7 +140,7 @@ function renderLogin(message) {
     el("section", { class: "login-card" }, [
       el("p", { class: "eyebrow", text: "Staff" }),
       el("h1", { text: "Sign in" }),
-      el("p", { text: "Edit the name, hours, menu, and photos. Guests do not see this page." }),
+      el("p", { text: "Edit the name, hours, and menu. Guests do not see this page." }),
       form,
       el("p", {}, [el("a", { href: "/", text: "Back to the site" })]),
     ]),
@@ -508,7 +508,7 @@ function sectionCard(section, list, sync) {
         class: "quiet",
         type: "button",
         text: "Add a dish",
-        onclick: () => addItem({ name: "", description: "", price: "", photoUrl: "" }),
+        onclick: () => addItem({ name: "", description: "", price: "" }),
       }),
       moveButtons(list, ".section-card", sync, () => sectionRemoval(name.value)),
     ]),
@@ -525,7 +525,6 @@ function itemCard(item, list, sync, sectionName) {
   const name = textInput(item.name, "text", { placeholder: "Dish name" });
   const price = textInput(item.price, "text", { placeholder: "$18" });
   const description = textArea(item.description, 3);
-  const photo = photoControl(item.photoUrl, { upload: true });
   const card = el("div", { class: "item-card" }, [
     el("div", { class: "item-top" }, [
       field("Dish", name),
@@ -535,17 +534,12 @@ function itemCard(item, list, sync, sectionName) {
       ]),
     ]),
     field("Description", description),
-    photo.upload,
-    field("Photo URL", photo.input, "Paste a link, or upload a photo and this fills in."),
-    photo.note,
-    photo.frame,
     moveButtons(list, ".item-card", sync, () => dishRemoval(name.value, sectionName.value)),
   ]);
   card.read = () => ({
     name: name.value,
     description: description.value,
     price: price.value,
-    photoUrl: photo.input.value,
   });
   return card;
 }
@@ -592,8 +586,8 @@ function passwordPanel(setStatus) {
   ]);
 }
 
-function photoControl(value, options = {}) {
-  const input = textInput(value, options.upload ? "text" : "url", { placeholder: "https://example.com/photo.jpg" });
+function photoControl(value) {
+  const input = textInput(value, "url", { placeholder: "https://example.com/photo.jpg" });
   const note = el("p", { class: "photo-note" });
   const frame = el("div", { class: "photo-frame" });
   function refresh() {
@@ -620,49 +614,7 @@ function photoControl(value, options = {}) {
     if (!input.value.trim()) refresh();
   });
   refresh();
-  let upload = null;
-  if (options.upload) {
-    const file = el("input", {
-      class: "file-input",
-      type: "file",
-      accept: "image/jpeg,image/png,image/webp,image/gif",
-      "aria-label": "Upload a photo",
-    });
-    const uploadButton = el("button", { class: "quiet", type: "button", text: "Upload a photo" });
-    uploadButton.addEventListener("click", () => file.click());
-    file.addEventListener("change", async () => {
-      const chosen = file.files && file.files[0];
-      file.value = "";
-      if (!chosen) return;
-      if (chosen.size > 2_000_000) {
-        note.textContent = "That photo is too large. Use one under 2 MB.";
-        frame.replaceChildren();
-        return;
-      }
-      uploadButton.disabled = true;
-      uploadButton.textContent = "Uploading…";
-      note.textContent = "";
-      try {
-        const response = await fetch("/api/admin/photos", {
-          method: "POST",
-          headers: { "content-type": chosen.type || "application/octet-stream" },
-          body: chosen,
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || "That photo did not upload.");
-        input.value = data.url || "";
-        refresh();
-      } catch (cause) {
-        note.textContent = cause.message;
-        frame.replaceChildren();
-      } finally {
-        uploadButton.disabled = false;
-        uploadButton.textContent = "Upload a photo";
-      }
-    });
-    upload = el("div", { class: "upload-line" }, [uploadButton, file]);
-  }
-  return { input, note, frame, upload };
+  return { input, note, frame };
 }
 
 function sectionRemoval(label) {

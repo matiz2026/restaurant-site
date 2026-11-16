@@ -19,7 +19,6 @@ import {
   type SiteContent,
 } from "./db.ts";
 import { renderAdminShell, renderProblem, renderPublic } from "./pages.ts";
-import { defaultUploadsDir, imageKind, readPhoto, savePhoto, savePhotoLocally } from "./uploads.ts";
 import {
   parseHours,
   parseLogin,
@@ -30,7 +29,6 @@ import {
 } from "./validate.ts";
 
 const MAX_BODY = 100_000;
-const MAX_PHOTO = 2_000_000;
 const ADMIN_SECTIONS = new Set(["details", "hours", "menu", "password"]);
 const CSP = [
   "default-src 'self'",
@@ -48,7 +46,6 @@ export interface AppContext {
   db: AppDatabase;
   sessionSecret: string;
   assets: { fetch(request: Request): Promise<Response> };
-  uploadsDir?: string;
 }
 
 export async function handleRequest(request: Request, ctx: AppContext): Promise<Response> {
@@ -58,7 +55,6 @@ export async function handleRequest(request: Request, ctx: AppContext): Promise<
       const trimmed = url.pathname.replace(/\/+$/, "") || "/";
       return new Response(null, { status: 308, headers: { location: trimmed + url.search } });
     }
-    if (request.method === "GET" && url.pathname.startsWith("/uploads/")) return await serveUpload(request, url.pathname, ctx);
     if (request.method === "GET" && (isStatic(url.pathname) || url.pathname === "/favicon.ico")) {
       return await serveAsset(request, ctx);
     }
@@ -71,7 +67,6 @@ export async function handleRequest(request: Request, ctx: AppContext): Promise<
     if (url.pathname === "/api/admin/restaurant" && request.method === "PUT") return await updateRestaurant(request, ctx);
     if (url.pathname === "/api/admin/hours" && request.method === "PUT") return await updateHours(request, ctx);
     if (url.pathname === "/api/admin/menu" && request.method === "PUT") return await updateMenu(request, ctx);
-    if (url.pathname === "/api/admin/photos" && request.method === "POST") return await uploadPhoto(request, ctx);
     if (url.pathname === "/api/admin/password" && request.method === "PUT") return await changePassword(request, ctx);
     if (url.pathname.startsWith("/api/")) return json({ error: "That action is not available." }, 404);
     return html(renderProblem("That page is not here.", "The link does not match anything on this site."), 404);
@@ -173,62 +168,6 @@ async function updateMenu(request: Request, ctx: AppContext): Promise<Response> 
   return json(await readSite(ctx.db));
 }
 
-async function uploadPhoto(request: Request, ctx: AppContext): Promise<Response> {
-  assertSameOrigin(request);
-  await requireUser(request, ctx);
-  const bytes = await readBytes(request, MAX_PHOTO);
-  if (bytes.byteLength === 0) throw new ValidationError("Choose a photo to upload.");
-  const kind = imageKind(bytes);
-  if (!kind) throw new ValidationError("Use a JPEG, PNG, WebP, or GIF.");
-  try {
-    const url = await storePhoto(ctx, bytes, kind);
-    log("photo_saved", { url });
-    return json({ url });
-  } catch (error) {
-    logError("photo_save_failed", error);
-    throw new HttpError("The photo could not be saved.", 500);
-  }
-}
-
-async function storePhoto(ctx: AppContext, bytes: Uint8Array, kind: ReturnType<typeof imageKind>): Promise<string> {
-  if (!kind) throw new Error("missing photo type");
-  try {
-    return await savePhoto(ctx.uploadsDir ?? defaultUploadsDir(), bytes, kind);
-  } catch (error) {
-    const url = await savePhotoLocally(bytes, ctx.sessionSecret);
-    if (url) return url;
-    throw error;
-  }
-}
-
-async function serveUpload(request: Request, pathname: string, ctx: AppContext): Promise<Response> {
-  try {
-    const photo = await readPhoto(ctx.uploadsDir ?? defaultUploadsDir(), pathname);
-    if (photo) return imageResponse(photo.bytes, photo.type);
-  } catch (error) {
-    logError("photo_read_failed", error);
-  }
-  try {
-    const proxied = await fetch(`http://127.0.0.1:4398${pathname}`, {
-      headers: { "x-upload-token": ctx.sessionSecret },
-    });
-    if (proxied.ok) {
-      const type = proxied.headers.get("content-type") || "application/octet-stream";
-      return imageResponse(new Uint8Array(await proxied.arrayBuffer()), type);
-    }
-  } catch (error) {
-    logError("photo_read_failed", error);
-  }
-  const assetUrl = new URL(request.url);
-  assetUrl.pathname = pathname;
-  const asset = await ctx.assets.fetch(new Request(assetUrl, { method: "GET" }));
-  if (asset.ok) return asset;
-  return new Response("Not found", {
-    status: 404,
-    headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", ...securityHeaders() },
-  });
-}
-
 async function changePassword(request: Request, ctx: AppContext): Promise<Response> {
   assertSameOrigin(request);
   assertSecret(ctx.sessionSecret);
@@ -305,7 +244,7 @@ async function readLimited(request: Request, max: number): Promise<string> {
   return new TextDecoder().decode(bytes);
 }
 
-async function readBytes(request: Request, max: number, tooLarge = "That photo is too large. Use one under 2 MB."): Promise<Uint8Array> {
+async function readBytes(request: Request, max: number, tooLarge: string): Promise<Uint8Array> {
   const declared = request.headers.get("content-length");
   if (declared && Number(declared) > max) throw new ValidationError(tooLarge);
   if (!request.body) return new Uint8Array();
@@ -330,17 +269,6 @@ async function readBytes(request: Request, max: number, tooLarge = "That photo i
     offset += chunk.byteLength;
   }
   return merged;
-}
-
-function imageResponse(bytes: Uint8Array, type: string): Response {
-  return new Response(bytes, {
-    headers: {
-      "content-type": type,
-      "cache-control": "public, max-age=86400",
-      "x-content-type-options": "nosniff",
-      ...securityHeaders(),
-    },
-  });
 }
 
 function isAdminPage(pathname: string): boolean {
