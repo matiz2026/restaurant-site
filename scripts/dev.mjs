@@ -34,7 +34,7 @@ function ensureSecret() {
 
 async function startWorker() {
   const wrangler = join(root, "node_modules", ".bin", "wrangler");
-  const migrated = await run(wrangler, ["d1", "migrations", "apply", "matiz-d1-local", "--local"], { CI: "true" });
+  const migrated = await run(wrangler, ["d1", "migrations", "apply", "matiz", "--local"], { CI: "true" });
   if (migrated.code !== 0) {
     console.error("Local D1 migrations did not apply.");
     return false;

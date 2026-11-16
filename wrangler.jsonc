@@ -1,8 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  // Local placeholder only. This Worker has not been created on the Cloudflare account.
-  // Replace the name before any deploy, and do not deploy until that is intentional.
-  "name": "matiz-worker-local",
+  "name": "matiz",
   "main": "src/index.ts",
   "compatibility_date": "2026-11-13",
   "compatibility_flags": ["nodejs_compat"],
@@ -27,13 +25,15 @@
   "secrets": {
     "required": ["SESSION_SECRET"]
   },
+  "routes": [
+    { "pattern": "matizpr.com", "custom_domain": true },
+    { "pattern": "www.matizpr.com", "custom_domain": true }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
-      // Local placeholder names. Create the real D1 database on the Cloudflare account
-      // before any command that is not marked --local, then replace both fields below.
-      "database_name": "matiz-d1-local",
-      "database_id": "00000000-0000-4000-8000-000000000001",
+      "database_name": "matiz",
+      "database_id": "eaccc228-fee8-4218-86f8-3b90cec68c45",
       "migrations_dir": "migrations",
       "remote": false
     }

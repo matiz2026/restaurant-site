@@ -29,7 +29,7 @@ if (existsSync(fallbackFile)) {
 }
 
 const wrangler = join(root, "node_modules", ".bin", "wrangler");
-const worker = spawn(wrangler, ["d1", "execute", "matiz-d1-local", "--local", "--command", sql], {
+const worker = spawn(wrangler, ["d1", "execute", "matiz", "--local", "--command", sql], {
   cwd: root,
   env: { ...process.env, CI: "true" },
   stdio: ["ignore", "pipe", "pipe"],

@@ -2,7 +2,7 @@
 
 A public restaurant page and a staff dashboard. The page shows the name, introduction, hours, address, phone, menu, a short about, and a visit block. Staff change those details at `/admin`. There is no online ordering, reservations, or payment.
 
-The site is a Cloudflare Worker. Restaurant facts, the menu, and the staff login live in Cloudflare D1. Nothing in this repo has been created on the Cloudflare account yet. The Worker name and database name in `wrangler.jsonc` are local placeholders.
+The site is a Cloudflare Worker named `matiz`. Restaurant facts, the menu, and the staff login live in the D1 database `matiz`. The live site is https://matizpr.com and https://www.matizpr.com.
 
 ## Run it locally
 
@@ -17,9 +17,9 @@ Open http://127.0.0.1:4327
 
 The staff dashboard is http://127.0.0.1:4327/admin
 
-`npm run dev` applies the local database migration, then starts Wrangler in local mode. That uses a database on this machine. It does not create or change anything on Cloudflare. If Wrangler cannot start, the same site runs on a local SQLite file in `data/` instead. Those two databases are separate.
+`npm run dev` applies the local database migration, then starts Wrangler in local mode. That uses a database on this machine. It does not change the live D1 database. If Wrangler cannot start, the same site runs on a local SQLite file in `data/` instead. Those two databases are separate.
 
-The staff username is `matiz`. The initial password was chosen when this project was created and is not written in the repo. Change it under Password in the dashboard. If you lose the local password, run `npm run admin:reset` and use the new password it prints. That command only updates local databases.
+The staff username is `matiz`. The initial password was chosen when this project was created and is not written in the repo. Change it under Password in the dashboard. If you lose the local password, run `npm run admin:reset` and use the new password it prints. That command only updates local databases. The live database has its own copy of the original login.
 
 ## Checks
 
@@ -28,6 +28,6 @@ npm test
 npm run typecheck
 ```
 
-## What not to run yet
+## Deploy
 
-Do not run `wrangler deploy`, `wrangler d1 create`, or any D1 command without `--local`. Those talk to the Cloudflare account. The domain is not attached. See the handoff note for the placeholders to replace before any of that.
+The Worker and database already exist on the Cloudflare account. `npx wrangler deploy` publishes this project to https://matizpr.com. D1 commands that should affect the live database need `--remote`. Commands with `--local` stay on this machine.
